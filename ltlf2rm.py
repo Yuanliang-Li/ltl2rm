@@ -69,37 +69,87 @@ class TERF_Parser():
                 self.ltlf_formulas.append( f.readline().strip() )
                 self.rewards.append( int(f.readline()) )
 
-def usage():
-    return "Usage: python3 ltlf2rm.py <terf> <output_tlsf>"
 
-if len(sys.argv) != 3:
-    print(usage())
-
-
-# STEP 1: parse TERF
-import sys
-import pprint
-
+# STEP 0: Configure the output file
 output_file_hoa = './out/rm' # output file in HOA format
-output_file_tex = './out/rm'
+output_file_txt = './out/rm.txt' # output file in txt format
 
 # STEP 1: Input LTL formulas and rewards
-ltl_list = ['F (a & F (b & F c))', 'F (f & g)'] # input all your LTL formulas in the list
-reward_list = [1, 3]  # input the reward value for each LTL formula
+ltl_list = ['F (a & F (b & F c))'] # input all your LTL formulas in the list
+reward_list = [1]  # input the reward value for each LTL formula
 
-
-# STEP 2: Transform LTLf formulae into DFA
+# STEP 2: Transform LTLf formulas into DFA
 automata = [ltlf_to_dfa(ltlf_formula) for ltlf_formula in ltl_list]
 
 # STEP 3: Do the cross product automaton
 product_dfa = terf_product(automata, reward_list)
+# rm_hoa = product_dfa.to_str('hoa', 't')
+rm_hoa = product_dfa.to_str('hoa') # HOA to string
 
 # STEP 5: Dump HOA to output file
-
-
-
-
 with open(output_file_hoa,"w") as f:
-    f.write( product_dfa.to_str('hoa','t') ) # transition-based output
+    f.write(rm_hoa) # transition-based output
+
+# STEP6: Dump to txt file that can be directly used by
+# https://github.com/RodrigoToroIcarte/reward_machines for reinforcement learning algorithms with reward machines.
+rm_txt = ''
+rm_table = []
+hoa_split = rm_hoa.splitlines()
+enter_body = False
+state_visit_id = -1
+terminal_state_id_list = []
+for idx, line in enumerate(hoa_split):
+    lst = line.split()
+    if lst[0] == 'States:':
+        number_states = int(lst[1]) # record number of states
+        # print("Number of state: {}".format(number_states))
+        state_reward_list = [0]*number_states
+    if lst[0] == 'Start:':
+        initial_state_id = int(lst[1]) # record initial state id
+    if lst[0] == 'AP:':
+        number_AP = int(lst[1]) # record number of APs
+        AP_list = []
+        for ap in lst[2:]:
+            AP_list.append(ap.replace('\"','')) # record the list of symbal for AP
+        # print("List of atomic propositions: {}".format(AP_list))
+    if lst[0] == '--BODY--':
+        enter_body = True
+    if enter_body:
+        if lst[0] == 'State:':
+            visit_state_id = int(lst[1])
+            visit_state_reward = int(lst[2].replace('{', '').replace('}',''))
+            state_reward_list[visit_state_id] = visit_state_reward
+        if '[' in lst[0]:
+            if 't' in lst[0]:
+                terminal_state_id_list.append(visit_state_id)
+                continue
+            next_state_id = int(lst[-1])
+            letter = ''
+            for s in lst[:-1]: letter += s
+            letter = letter.replace('[', '').replace(']','')
+            # print(letter)
+            for i, ap in enumerate(AP_list):
+                letter = letter.replace(str(i), ap)
+            # print(letter)
+            transition = [visit_state_id, next_state_id, letter]
+            rm_table.append(transition)
+    if lst[0] == '--END--':
+        enter_body = False
 
 
+rm_txt += str(initial_state_id) + ' # initial state' + '\n' \
+        + str(terminal_state_id_list).replace(' ', '') + ' # terminal state'
+for transition in rm_table:
+    rm_txt += '\n'
+    rm_txt += '(' + \
+               str(transition[0]) + ','  + \
+               str(transition[1]) + ',' + \
+               '\'' + transition[2] + '\'' + ','  + \
+               'ConstantRewardFunction({})'.format(state_reward_list[transition[1]]) + ')'
+
+with open(output_file_txt, 'w') as f:
+    f.write(rm_txt)
+
+# print something
+print('The reward machine is:')
+print(rm_txt)
