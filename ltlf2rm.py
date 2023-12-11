@@ -81,6 +81,7 @@ import sys
 import pprint
 
 output_file_hoa = './out/rm' # output file in HOA format
+output_file_tex = './out/rm'
 
 # STEP 1: Input LTL formulas and rewards
 ltl_list = ['F (a & F (b & F c))', 'F (f & g)'] # input all your LTL formulas in the list
@@ -94,5 +95,11 @@ automata = [ltlf_to_dfa(ltlf_formula) for ltlf_formula in ltl_list]
 product_dfa = terf_product(automata, reward_list)
 
 # STEP 5: Dump HOA to output file
+
+
+
+
 with open(output_file_hoa,"w") as f:
     f.write( product_dfa.to_str('hoa','t') ) # transition-based output
+
+

@@ -1,4 +1,4 @@
-# ltl2rm
+# LTL to Reward Machine
 
 Translate LTL Formulas to a Reward Machine.
 
@@ -21,6 +21,7 @@ python3 ltlf2rm.py
 
 Note: The code produces a reward machine in a HOA format and a txt format, respectively. 
 The HOA is an automaton with transitions labeled with rewards.
+The txt format is a format that can be directly used by https://github.com/RodrigoToroIcarte/reward_machines for reinforcement learning algorithms with reward machines.
 
 ## DEPENDENCIES
 Spot: https://spot.lrde.epita.fr/
