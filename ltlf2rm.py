@@ -93,25 +93,29 @@ with open(output_file_hoa,"w") as f:
 # STEP6: Dump to txt file that can be directly used by
 # https://github.com/RodrigoToroIcarte/reward_machines for reinforcement learning algorithms with reward machines.
 rm_txt = ''
-rm_table = []
+rm_dict = {}
+rm_dict['LTLs'] = ltl_list
+rm_dict['Rewards'] = reward_list
+rm_dict['Start'] = 0
+rm_dict['Terminals'] = []
+rm_dict['Transitions'] = []
 hoa_split = rm_hoa.splitlines()
 enter_body = False
 state_visit_id = -1
-terminal_state_id_list = []
 for idx, line in enumerate(hoa_split):
     lst = line.split()
     if lst[0] == 'States:':
         number_states = int(lst[1]) # record number of states
-        # print("Number of state: {}".format(number_states))
         state_reward_list = [0]*number_states
+        rm_dict['States'] = number_states
     if lst[0] == 'Start:':
-        initial_state_id = int(lst[1]) # record initial state id
+        rm_dict['Start'] = int(lst[1]) # record initial state id
     if lst[0] == 'AP:':
         number_AP = int(lst[1]) # record number of APs
         AP_list = []
         for ap in lst[2:]:
             AP_list.append(ap.replace('\"','')) # record the list of symbal for AP
-        # print("List of atomic propositions: {}".format(AP_list))
+        rm_dict['AP'] = AP_list
     if lst[0] == '--BODY--':
         enter_body = True
     if enter_body:
@@ -121,7 +125,7 @@ for idx, line in enumerate(hoa_split):
             state_reward_list[visit_state_id] = visit_state_reward
         if '[' in lst[0]:
             if 't' in lst[0]:
-                terminal_state_id_list.append(visit_state_id)
+                rm_dict['Terminals'].append(visit_state_id)
                 continue
             next_state_id = int(lst[-1])
             letter = ''
@@ -132,14 +136,15 @@ for idx, line in enumerate(hoa_split):
                 letter = letter.replace(str(i), ap)
             # print(letter)
             transition = [visit_state_id, next_state_id, letter]
-            rm_table.append(transition)
+            rm_dict['Transitions'].append(transition)
     if lst[0] == '--END--':
         enter_body = False
 
 
-rm_txt += str(initial_state_id) + ' # initial state' + '\n' \
-        + str(terminal_state_id_list).replace(' ', '') + ' # terminal state'
-for transition in rm_table:
+rm_txt += str(rm_dict['Start']) + ' # initial state' + '\n' \
+        + str(rm_dict['Terminals']).replace(' ', '') + ' # terminal state'
+for transition in rm_dict['Transitions']:
+    transition.append(state_reward_list[transition[1]]) # add reward
     rm_txt += '\n'
     rm_txt += '(' + \
                str(transition[0]) + ','  + \
@@ -147,9 +152,16 @@ for transition in rm_table:
                '\'' + transition[2] + '\'' + ','  + \
                'ConstantRewardFunction({})'.format(state_reward_list[transition[1]]) + ')'
 
+
 with open(output_file_txt, 'w') as f:
     f.write(rm_txt)
 
-# print something
-print('The reward machine is:')
+# print the reward machine in HOA, txt, and Python dict, respectively
+print('-----The reward machine in HOA-----')
+print(rm_hoa)
+print('\n')
+print('-----The reward machine in txt-----')
 print(rm_txt)
+print('\n')
+print('-----The reward machine in Python dict-----')
+print(rm_dict) # you can also get the reward machine in Python dict if needed
