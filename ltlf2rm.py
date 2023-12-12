@@ -1,4 +1,5 @@
 import spot
+import json
 import buddy
 import sys
 import itertools
@@ -70,9 +71,11 @@ class TERF_Parser():
                 self.rewards.append( int(f.readline()) )
 
 
-# STEP 0: Configure the output file
+# STEP 0: Configure the output file (HOA, txt, json)
 output_file_hoa = './out/rm' # output file in HOA format
 output_file_txt = './out/rm.txt' # output file in txt format
+output_file_json = './out/rm.json' # output file in txt format
+
 
 # STEP 1: Input LTL formulas and rewards
 ltl_list = ['F (a & F (b & F c))'] # input all your LTL formulas in the list
@@ -90,7 +93,7 @@ rm_hoa = product_dfa.to_str('hoa') # HOA to string
 with open(output_file_hoa,"w") as f:
     f.write(rm_hoa) # transition-based output
 
-# STEP6: Dump to txt file that can be directly used by
+# STEP 6: Dump to txt file that can be directly used by
 # https://github.com/RodrigoToroIcarte/reward_machines for reinforcement learning algorithms with reward machines.
 rm_txt = ''
 rm_dict = {}
@@ -126,7 +129,7 @@ for idx, line in enumerate(hoa_split):
         if '[' in lst[0]:
             if 't' in lst[0]:
                 rm_dict['Terminals'].append(visit_state_id)
-                continue
+                # continue
             next_state_id = int(lst[-1])
             letter = ''
             for s in lst[:-1]: letter += s
@@ -140,21 +143,27 @@ for idx, line in enumerate(hoa_split):
     if lst[0] == '--END--':
         enter_body = False
 
-
 rm_txt += str(rm_dict['Start']) + ' # initial state' + '\n' \
         + str(rm_dict['Terminals']).replace(' ', '') + ' # terminal state'
 for transition in rm_dict['Transitions']:
-    transition.append(state_reward_list[transition[1]]) # add reward
+    if transition[2] == 't':
+        transition.append(0)
+    else:
+        transition.append(state_reward_list[transition[1]]) # add reward
     rm_txt += '\n'
     rm_txt += '(' + \
                str(transition[0]) + ','  + \
                str(transition[1]) + ',' + \
                '\'' + transition[2] + '\'' + ','  + \
-               'ConstantRewardFunction({})'.format(state_reward_list[transition[1]]) + ')'
-
+               'ConstantRewardFunction({})'.format(transition[3]) + ')'
 
 with open(output_file_txt, 'w') as f:
     f.write(rm_txt)
+
+# STEP 7: Dump to json file
+with open(output_file_json, "w") as outfile:
+    json.dump(rm_dict, outfile, indent = 4)
+
 
 # print the reward machine in HOA, txt, and Python dict, respectively
 print('-----The reward machine in HOA-----')
@@ -163,5 +172,5 @@ print('\n')
 print('-----The reward machine in txt-----')
 print(rm_txt)
 print('\n')
-print('-----The reward machine in Python dict-----')
+print('-----The reward machine in Python dictionary (json)-----')
 print(rm_dict) # you can also get the reward machine in Python dict if needed
