@@ -138,6 +138,8 @@ for idx, line in enumerate(hoa_split):
             for i, ap in enumerate(AP_list):
                 letter = letter.replace(str(i), ap)
             # print(letter)
+            if letter == 't':
+                letter = 'True'
             transition = [visit_state_id, next_state_id, letter]
             rm_dict['Transitions'].append(transition)
     if lst[0] == '--END--':
@@ -146,7 +148,7 @@ for idx, line in enumerate(hoa_split):
 rm_txt += str(rm_dict['Start']) + ' # initial state' + '\n' \
         + str(rm_dict['Terminals']).replace(' ', '') + ' # terminal state'
 for transition in rm_dict['Transitions']:
-    if transition[2] == 't':
+    if transition[2] == 'True':
         transition.append(0)
     else:
         transition.append(state_reward_list[transition[1]]) # add reward
